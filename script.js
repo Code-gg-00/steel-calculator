@@ -1,0 +1,202 @@
+// 显示当前日期和时间
+function updateDateTime() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('datetime').textContent = `登录时间：${dateStr} ${timeStr}`;
+}
+setInterval(updateDateTime, 1000);
+updateDateTime();
+
+// 获取当前日期（不带时间）
+function getCurrentDateStr() {
+  const now = new Date();
+  return now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+// 动态生成钢材输入表单
+const startInputBtn = document.getElementById('start-input');
+const dynamicFormSection = document.getElementById('dynamic-form');
+const resultSection = document.getElementById('result-section');
+
+startInputBtn.addEventListener('click', function() {
+  const count = parseInt(document.getElementById('steel-count').value, 10);
+  if (isNaN(count) || count < 1 || count > 20) {
+    alert('请输入1-20之间的钢材种类数');
+    return;
+  }
+  let formHtml = '<form id="steel-form">';
+  for (let i = 0; i < count; i++) {
+    formHtml += `
+      <div class="steel-row-group">
+        <div class="steel-row-title"><span>钢材${i+1}</span> <input type="text" name="name${i}" placeholder="名称" required style="width:80px;"></div>
+        <div class="steel-row-group-inner">
+          <div class="steel-group">
+            <span class="group-label">采购</span>
+            <input type="number" name="buyWeight${i}" placeholder="重量(kg)" min="0" step="0.01" required>
+            <input type="number" name="buyPrice${i}" placeholder="单价(元/kg)" min="0" step="0.01" required>
+          </div>
+          <div class="steel-group">
+            <span class="group-label">售卖</span>
+            <input type="number" name="sellWeight${i}" placeholder="重量(kg)" min="0" step="0.01" required>
+            <input type="number" name="sellPrice${i}" placeholder="单价(元/kg)" min="0" step="0.01" required>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  formHtml += '<button type="submit" id="calc-btn">计算</button></form>';
+  dynamicFormSection.innerHTML = formHtml;
+  resultSection.innerHTML = '';
+  document.getElementById('chart-section').innerHTML = '';
+
+  // 计算功能
+  document.getElementById('steel-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = e.target;
+    let rows = [];
+    let totalBuy = 0, totalSell = 0, totalProfit = 0;
+    for (let i = 0; i < count; i++) {
+      const name = form[`name${i}`].value.trim() || `钢材${i+1}`;
+      const buyWeight = parseFloat(form[`buyWeight${i}`].value) || 0;
+      const buyPrice = parseFloat(form[`buyPrice${i}`].value) || 0;
+      const sellWeight = parseFloat(form[`sellWeight${i}`].value) || 0;
+      const sellPrice = parseFloat(form[`sellPrice${i}`].value) || 0;
+      const buyTotal = buyWeight * buyPrice;
+      const sellTotal = sellWeight * sellPrice;
+      const profit = sellTotal - buyTotal;
+      totalBuy += buyTotal;
+      totalSell += sellTotal;
+      totalProfit += profit;
+      rows.push({ name, buyWeight, buyPrice, buyTotal, sellWeight, sellPrice, sellTotal, profit });
+    }
+    // 生成结果表格
+    const dateStr = getCurrentDateStr();
+    let tableHtml = `<div class="result-date">日期：${dateStr}</div>`;
+    tableHtml += `<div class="result-table-wrap"><table class="result-table"><thead><tr>
+      <th>名称</th><th>采购重量(kg)</th><th>采购单价</th><th>采购费用</th><th>售卖重量(kg)</th><th>售卖单价</th><th>售卖收入</th><th>盈利</th>
+    </tr></thead><tbody>`;
+    rows.forEach(row => {
+      tableHtml += `<tr>
+        <td>${row.name}</td>
+        <td>${row.buyWeight.toFixed(2)}</td>
+        <td>${row.buyPrice.toFixed(2)}</td>
+        <td>${row.buyTotal.toFixed(2)}</td>
+        <td>${row.sellWeight.toFixed(2)}</td>
+        <td>${row.sellPrice.toFixed(2)}</td>
+        <td>${row.sellTotal.toFixed(2)}</td>
+        <td style="color:${row.profit>=0?'#4caf50':'#f44336'};font-weight:bold;">${row.profit.toFixed(2)}</td>
+      </tr>`;
+    });
+    tableHtml += `</tbody><tfoot><tr style="font-weight:bold;background:#132743;">
+      <td>合计</td><td></td><td></td><td>${totalBuy.toFixed(2)}</td><td></td><td></td><td>${totalSell.toFixed(2)}</td><td style="color:${totalProfit>=0?'#4caf50':'#f44336'};">${totalProfit.toFixed(2)}</td>
+    </tr></tfoot></table></div>`;
+    resultSection.innerHTML = tableHtml;
+
+    // 用Canvas手动绘制表格图片，包含日期时间
+    const chartSection = document.getElementById('chart-section');
+    chartSection.innerHTML = '';
+    // 生成表格图片
+    setTimeout(() => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      // 画布参数
+      const colTitles = ['名称', '采购重量(kg)', '采购单价', '采购费用', '售卖重量(kg)', '售卖单价', '售卖收入', '盈利'];
+      const colWidths = [90, 110, 90, 90, 110, 90, 90, 90];
+      const tableWidth = colWidths.reduce((a, b) => a + b, 0) + 40;
+      const rowHeight = 38;
+      const headHeight = 44;
+      const dateHeight = 38;
+      const totalRows = rows.length + 2; // 表头+数据+合计
+      const canvasHeight = dateHeight + headHeight + rowHeight * (rows.length + 1) + 30;
+      const canvas = document.createElement('canvas');
+      canvas.width = tableWidth * 2; // 提高清晰度
+      canvas.height = canvasHeight * 2;
+      canvas.style.width = tableWidth + 'px';
+      canvas.style.height = canvasHeight + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
+      // 背景
+      ctx.fillStyle = '#162447';
+      ctx.fillRect(0, 0, tableWidth, canvasHeight);
+      // 日期时间
+      ctx.fillStyle = '#2196f3';
+      ctx.font = 'bold 18px Segoe UI, Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`日期：${dateStr}  时间：${timeStr}`, 20, 28);
+      // 表头
+      let x = 20, y = dateHeight;
+      ctx.font = 'bold 16px Segoe UI, Arial';
+      ctx.fillStyle = '#fff';
+      for (let i = 0; i < colTitles.length; i++) {
+        ctx.fillStyle = '#1769aa';
+        ctx.fillRect(x, y, colWidths[i], headHeight);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(colTitles[i], x + 10, y + 28);
+        x += colWidths[i];
+      }
+      // 数据行
+      y += headHeight;
+      ctx.font = '15px Segoe UI, Arial';
+      for (let r = 0; r < rows.length; r++) {
+        x = 20;
+        const row = rows[r];
+        const vals = [row.name, row.buyWeight.toFixed(2), row.buyPrice.toFixed(2), row.buyTotal.toFixed(2), row.sellWeight.toFixed(2), row.sellPrice.toFixed(2), row.sellTotal.toFixed(2), row.profit.toFixed(2)];
+        for (let c = 0; c < vals.length; c++) {
+          ctx.fillStyle = r % 2 === 0 ? '#1a2a47' : '#22335a';
+          ctx.fillRect(x, y, colWidths[c], rowHeight);
+          ctx.fillStyle = c === 7 ? (row.profit >= 0 ? '#4caf50' : '#f44336') : '#e6f1ff';
+          ctx.fillText(vals[c], x + 10, y + 26);
+          x += colWidths[c];
+        }
+        y += rowHeight;
+      }
+      // 合计行
+      x = 20;
+      ctx.font = 'bold 15px Segoe UI, Arial';
+      for (let c = 0; c < colTitles.length; c++) {
+        ctx.fillStyle = '#132743';
+        ctx.fillRect(x, y, colWidths[c], rowHeight);
+        ctx.fillStyle = c === 0 ? '#90caf9' : (c === 3 ? '#90caf9' : (c === 6 ? '#90caf9' : (c === 7 ? (totalProfit >= 0 ? '#4caf50' : '#f44336') : '#e6f1ff')));
+        let txt = '';
+        if (c === 0) txt = '合计';
+        if (c === 3) txt = totalBuy.toFixed(2);
+        if (c === 6) txt = totalSell.toFixed(2);
+        if (c === 7) txt = totalProfit.toFixed(2);
+        ctx.fillText(txt, x + 10, y + 26);
+        x += colWidths[c];
+      }
+      // 边框
+      ctx.strokeStyle = '#2196f3';
+      ctx.lineWidth = 1;
+      x = 20;
+      y = dateHeight;
+      for (let r = 0; r < totalRows; r++) {
+        let xx = 20;
+        for (let c = 0; c < colTitles.length; c++) {
+          ctx.strokeRect(xx, y, colWidths[c], r === 0 ? headHeight : rowHeight);
+          xx += colWidths[c];
+        }
+        y += r === 0 ? headHeight : rowHeight;
+      }
+      // 提示
+      const tip = document.createElement('div');
+      tip.textContent = '长按图片可保存到手机';
+      tip.style.color = '#90caf9';
+      tip.style.fontSize = '1rem';
+      tip.style.textAlign = 'center';
+      tip.style.margin = '0.5rem 0 0.2rem 0';
+      chartSection.appendChild(tip);
+      // 图片
+      const img = document.createElement('img');
+      img.src = canvas.toDataURL('image/png');
+      img.alt = '钢材盈利表格';
+      img.style.maxWidth = '100%';
+      img.style.marginTop = '0.2rem';
+      img.style.borderRadius = '8px';
+      img.style.background = '#fff';
+      chartSection.appendChild(img);
+    }, 200);
+  });
+}); 

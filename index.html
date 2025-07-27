@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>钢材计算器</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>钢材计算器</h1>
+    <div id="datetime"></div>
+  </header>
+  <main>
+    <section class="input-section">
+      <label for="steel-count">请输入今日采购钢材的种类数：</label>
+      <input type="number" id="steel-count" min="1" max="20" value="1">
+      <button id="start-input">开始填写</button>
+    </section>
+    <section id="dynamic-form"></section>
+    <section id="result-section"></section>
+    <section id="chart-section"></section>
+  </main>
+  <footer>
+    <p>© 2024 钢材计算器</p>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html> 
